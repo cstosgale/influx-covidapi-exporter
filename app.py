@@ -1,19 +1,21 @@
-from prometheus_client import start_http_server, Summary
-import random
-import time
+from requests import get
+from influxdb import 
 
-# Create a metric to track time spent and requests made.
-REQUEST_TIME = Summary('request_processing_seconds', 'Time spent processing request')
-
-# Decorate function with metric.
-@REQUEST_TIME.time()
-def process_request(t):
-    """A dummy function that takes some time."""
-    time.sleep(t)
+def get_data(url):
+    response = get(endpoint, timeout=10)
+    
+    if response.status_code >= 400:
+        raise RuntimeError(f'Request failed: { response.text }')
+        
+    return response.json()
+    
 
 if __name__ == '__main__':
-    # Start up the server to expose the metrics.
-    start_http_server(8000)
-    # Generate some requests.
-    while True:
-        process_request(random.random())
+    endpoint = (
+        'https://api.coronavirus.data.gov.uk/v1/data?'
+        'filters=areaType=nation;areaName=england&'
+        'structure={"date":"date","newCases":"newCasesByPublishDate"}'
+    )
+    
+    data = get_data(endpoint)
+    print(data)
