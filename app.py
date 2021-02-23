@@ -13,6 +13,7 @@ api_schema = ['areaName','date']
 api_schema.extend(metrics)
 alldata_dict = {}
 linedatalist = []
+client = InfluxDBClient(host='192.168.8.100', port=8086)
 
 def get_data(url):
 	response = get(url, timeout=10)
@@ -45,7 +46,7 @@ def date_timestamp(string):
 		datetime_obj = datetime.strptime(string, '%Y-%m-%d')
 	except Exception as e:
 		print('Datetime format error: ',e,'Full String: ', string)
-	timestamp = datetime.timestamp(datetime_obj)
+	timestamp = int(datetime.timestamp(datetime_obj))
 	return timestamp
 	
 def checkfornone(value):
@@ -83,13 +84,13 @@ for areacode in areacodes:
 	for index in range(len(data_dict)):
 		if not index == 0:
 			#Create a list formatted for influxDB import in Line protocol format
-			linedata = 'msoa-covid-data, location="' + data_dict[index]['areaName'] + '" '	
+			linedata = 'msoa-covid-data,location=' + data_dict[index]['areaName'].replace(' ', '') + ' '
 			i = 0
 			for metric in metrics:
 				i += 1
 				linedata += metric + '=' + str(data_dict[index][metric])
 				if not i == len(metrics):
-					linedata += ', '
+					linedata += ','
 				else:
 					linedata += ' '
 			linedata += str(data_dict[index]['date'])
@@ -104,4 +105,6 @@ for areacode in areacodes:
 #print(data)
 
 
-print(linedatalist)
+#print(linedatalist)
+#Write the data to InfluxDB
+client.write_points(linedatalist, database='covid', time_precision='s', batch_size=10000, protocol='line')
