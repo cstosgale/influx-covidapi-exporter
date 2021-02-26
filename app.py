@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from requests import get
 from influxdb import InfluxDBClient
 from jsonextract import json_extract
@@ -7,19 +9,31 @@ import time
 import json
 from datetime import datetime
 
-areacodes = ['E02002332', 'E02002333', 'E02001098']
-metrics = ['newCasesBySpecimenDateRollingSum', 'newCasesBySpecimenDateRollingRate', 'newCasesBySpecimenDateChange', 'newCasesBySpecimenDateChangePercentage']
-api_schema = ['areaName','date']
-api_schema.extend(metrics)
+msoa_areacodes = ['E02002332', 'E02002333', 'E02001098']
+msoa_metrics = ['newCasesBySpecimenDateRollingSum', 'newCasesBySpecimenDateRollingRate', 'newCasesBySpecimenDateChange', 'newCasesBySpecimenDateChangePercentage']
+msoa_api_schema = ['areaName','date']
+msoa_api_schema.extend(msoa_metrics)
+national_areacodes = ['E92000001']
+national_metrics = ['newCasesByPublishDateAgeDemographics', 'newCasesByPublishDateAgeDemographics', 'cumAdmissionsByAge']
+national_api_schema = ['areaName','date']
+national_api_schema.extend(national_metrics)
 alldata_dict = {}
 linedatalist = []
 client = InfluxDBClient(host='192.168.8.100', port=8086)
 
-def get_data(url):
-	response = get(url, timeout=10)
+def get_data(areatype, areacode, metrics):
+	#Gets COVID data for a specific area code for a specific metric	
+	endpoint = 'https://api.coronavirus.data.gov.uk/v2/data?areaType=' + areatype + '&areaCode=' + areacode + '&'
+	for metric in metrics:
+		endpoint += 'metric=' + metric + '&'
+	endpoint += 'format=json'
+	
+	print(endpoint)
+	
+	response = get(endpoint, timeout=10)
     
 	if response.status_code >= 400:
-		raise RuntimeError(f'Request failed: { response.text }' + 'URL: ' + url)
+		raise RuntimeError('Request failed: { response.text }' + 'URL: ' + endpoint)
 
 	return response.json()
 
@@ -35,6 +49,8 @@ def get_msoa_data(areacode):
 	response = get_data(endpoint)
 
 	return response
+	
+
 	
 def date_timestamp(string):
 	#Converts the frame.time string formatted as "Jan  9, 2021 11:12:52.206763000 GMT Standard Time" to datetime
@@ -57,11 +73,10 @@ def checkfornone(value):
 		result = value
 	return result
 
-def import_data(jblock):
+def import_data(jblock, api_schema):
 	# Define local variables
 
 	# Read the capture and extract the required parameters into separate lists
-	#jblock = json.loads(data)
 	data_dict = {}
 	for sitem in api_schema:
 		index = 0
@@ -75,36 +90,30 @@ def import_data(jblock):
 	return data_dict
 
 
-#Iterate through each area code
-for areacode in areacodes:
+#Iterate through each area code and get MSOA data
+for areacode in msoa_areacodes:
 	#Get the response from the API for the MSOA
-	data = get_msoa_data(areacode)
+	data = get_data('msoa', areacode, msoa_metrics)
 	#Import the relevant JSON data into a dictionary
-	data_dict = import_data(data)
+	data_dict = import_data(data, msoa_api_schema)
 	for index in range(len(data_dict)):
 		if not index == 0:
 			#Create a list formatted for influxDB import in Line protocol format
 			linedata = 'msoa-covid-data,location=' + data_dict[index]['areaName'].replace(' ', '') + ' '
 			i = 0
-			for metric in metrics:
+			for metric in msoa_metrics:
 				i += 1
 				linedata += metric + '=' + str(data_dict[index][metric])
-				if not i == len(metrics):
+				if not i == len(msoa_metrics):
 					linedata += ','
 				else:
 					linedata += ' '
 			linedata += str(data_dict[index]['date'])
 			linedatalist.append(linedata)
-	#		dstindex = len(alldata_dict) + 1
-	#		alldata_dict[dstindex] = data_dict[index]
 
-#areacode = 'E02002332'
-#metric = 'newCasesBySpecimenDateRollingSum'
+#Iterate through each area code and get national data
 
 
-#print(data)
 
-
-#print(linedatalist)
 #Write the data to InfluxDB
 client.write_points(linedatalist, database='covid', time_precision='s', batch_size=10000, protocol='line')
