@@ -12,24 +12,25 @@ from datetime import datetime
 
 msoa_areacodes = ['E02002332', 'E02002333', 'E02001098']
 msoa_metrics = ['newCasesBySpecimenDateRollingSum', 'newCasesBySpecimenDateRollingRate', 'newCasesBySpecimenDateChange', 'newCasesBySpecimenDateChangePercentage']
-msoa_api_schema = ['areaName','date']
+msoa_api_schema = ['areaName']
 msoa_api_schema.extend(msoa_metrics)
 nation_areacodes = ['E92000001']
 nation_metrics = ['newDeaths28DaysByDeathDateAgeDemographics', 'cumAdmissionsByAge']
 nation_api_schema = ['areaName','date']
 nation_api_schema.extend(nation_metrics)
+timestamp_tag = 'date'
 
 api_schemas = {
 	'areatype': 'nation',
 	'areacodes': ['E92000001'],
-	'l1tags': ['areaName','date'],
+	'l1tags': ['areaName'],
 	'l2tags': ['age'],
 	'l1metrics': ['newDeaths28DaysByDeathDateAgeDemographics', 'cumAdmissionsByAge'],
 	'l2metrics': ['rate', 'value', 'deaths', 'rollingRate', 'rollingSum']
 },{
 	'areatype': 'msoa',
 	'areacodes': ['E02002332', 'E02002333', 'E02001098'],
-	'l1tags': ['areaName','date'],
+	'l1tags': ['areaName'],
 	'l2tags': [],
 	'l1metrics': ['newCasesBySpecimenDateRollingSum', 'newCasesBySpecimenDateRollingRate', 'newCasesBySpecimenDateChange', 'newCasesBySpecimenDateChangePercentage'],
 	'l2metrics': []
@@ -57,8 +58,6 @@ def get_data(areatype, areacode, metrics):
 
 	return response.json()
 	
-
-	
 def date_timestamp(string):
 	#Converts the frame.time string formatted as "Jan  9, 2021 11:12:52.206763000 GMT Standard Time" to datetime
 	i = 0
@@ -78,34 +77,40 @@ def checkfornone(value):
 		result = 0
 	else:
 		result = value
-	return result
+	return str(result)
 	
-def write_line_data(areatype, tags_values, metrics_values):
+def write_line_data(areatype, tags_values, metrics_values, date):
 	#Write metric name
 	linedata = areatype + '-covid-data,'
 	#Write tags
 	i = 0
-	for tag_value in tag_values:
+	for tag_value in tags_values:
 		i += 1
 		if tag_value['name'] == 'areaName':
 			linedata += 'location=' + tag_value['value'].replace(' ','')
-		elif tag_value['name'] == 'date':
-			linedata += tag_value['name'] + '=' + date_timestamp(tag_value['value'])
 		else:
 			linedata += tag_value['name'] + '=' + tag_value['value']
-		if not i == len(metrics):
+		if not i == len(tags_values):
 			linedata += ','
 		else:
 			linedata += ' '
 	#Write metrics
 	i = 0
-	for metric_value in metric_values:
+	for metric_value in metrics_values:
 		i += 1
-		linedata += metric_value['name'] + '=' + metric_value['value']
-		if not i == len(metrics):
+		try:
+			linedata += metric_value['name'] + '=' + checkfornone(metric_value['value'])
+		except:
+			print('Error: ', sys.exc_info()[0])
+			print(metric_value['name'])
+			print(metric_value['value'])
+			raise
+		if not i == len(metrics_values):
 			linedata += ','
 		else:
-			linedata += ' '		
+			linedata += ' '
+	#Write timestamp
+	linedata += 'timestamp=' + date_timestamp(date)		
 	linedatalist.append(linedata)
 	
 
@@ -119,114 +124,43 @@ def write_data(api_schemas):
 				#print(data)
 				#Go through each instance in the data
 				for index in range(len(data['body'])):
-					l1metric_values = []
-					l1tag_values = []
+					l1metrics_values = []
+					l1tags_values = []
 					#Go through each L1 Metric and work out if it is a dictionary or not
 					for metric in api_schema['l1metrics']:
 						metric_dataset = data['body'][index][metric]
 
 						#Check if the metric is a list, or a plain l1 metric
 						if isinstance(metric_dataset, list) and len(metric_dataset) > 0:
-							l2tag_values = []
-							l2metric_values = []
-							#print('Its a list! ', data['body'][index][metric])
 							#Go through each metric list and pull out the data and tags
 							for metric_data in metric_dataset:
-								l2tag_values.extend[{'name': 'parentmetric', 'value': metric}]
+								l2tags_values = []
+								l2metrics_values = []
+								l2tags_values.extend([{'name': 'parentmetric', 'value': metric}])
 								for tag in api_schema['l1tags']:
-									l2tag_values.extend([{'name': tag, 'value': data['body'][index][tag]}])
+									l2tags_values.extend([{'name': tag, 'value': data['body'][index][tag]}])
 								for tag in api_schema['l2tags']:
-									l2tag_values.extend([{'name': tag, 'value': metric_data[tag]}])
+									#Check the tag exists in the data
+									if tag in metric_data:
+										l2tags_values.extend([{'name': tag, 'value': metric_data[tag]}])
 								for l2metric in api_schema['l2metrics']:
-									l2metric_values.extend([{'name': l2metric, 'value': metric_data[l2metric]}])
-							write_line_data(api_schema['areatype'], l2tag_values, l2metric_values)
-						else:
-							l1metric_values.extend([{'name': metric, 'value': metric_dataset}])								
+									#Check if the metric exists in the data
+									if l2metric in metric_data:
+										l2metrics_values.extend([{'name': l2metric, 'value': metric_data[l2metric]}])
+								write_line_data(api_schema['areatype'], l2tags_values, l2metrics_values, data['body'][index][timestamp_tag])
+						elif not isinstance(metric_dataset, list) and metric_dataset is not None:
+							l1metrics_values.extend([{'name': metric, 'value': metric_dataset}])								
 					for tag in api_schema['l1tags']:
-						l1tag_values.extend([{'name': tag, 'value': data['body'][index][tag]}])							
-					write_line_data(api_schema['areatype'], l1tag_values, l1metric_values)		
+						l1tags_values.extend([{'name': tag, 'value': data['body'][index][tag]}])							
+					write_line_data(api_schema['areatype'], l1tags_values, l1metrics_values, data['body'][index][timestamp_tag])		
 		except:
 			print('Error: ', sys.exc_info()[0], 'Schema: ', api_schema)
 			raise
 			
-def write_line_data_old2(areatype, areacodes, metrics, api_schema):
-	#Iterate through each area code and get the data
-	for areacode in areacodes:
-		#Get the response from the API for the MSOA
-		data = get_data(areatype, areacode, metrics)
-		for index in range(len(data['body'])):
-			if not index == 0:
-				#Create a list formatted for influxDB import in Line protocol format
-				linedata = areatype + '-covid-data,location=' + data['body'][index]['areaName'].replace(' ', '') + ' '
-				i = 0
-				for metric in metrics:
-					i += 1
-					#If it's an age metric, add a label for the age category and then the metric
-					if 'Age' in metric and data['body'][index][metric] is not None:
-						for ageindex in range(len(data['body'][index][metric])):
-							lineagedata = areatype + '-covid-data,location=' + data['body'][index]['areaName'].replace(' ', '') + ','
-							lineagedata += 'age=' + data['body'][index][metric][ageindex]['age'] + ' '
-							if 'Deaths' in metric:
-								lineagedata += metric + '=' + str(data['body'][index][metric][ageindex]['deaths']) + ' '
-							elif 'Admissions' in metric:
-								lineagedata += metric + '=' + str(data['body'][index][metric][ageindex]['value']) + ' '
-							lineagedata += date_timestamp(data['body'][index]['date'])
-							linedatalist.append(lineagedata)
-					else:
-						linedata += metric + '=' + str(checkfornone(data['body'][index][metric]))
-						nonagemetric = True
-					if not i == len(metrics):
-						linedata += ','
-					else:
-						linedata += ' '
-				linedata += date_timestamp(data['body'][index]['date'])
-				if nonagemetric:
-					linedatalist.append(linedata)
-					nonagemetric = False
-				
-	#Write the data to InfluxDB
-	print(linedatalist)
 	#client.write_points(linedatalist, database='covid', time_precision='s', batch_size=10000, protocol='line')
 
-def write_line_data_old(areatype, areacodes, metrics, api_schema):
-	#Iterate through each area code and get the data
-	for areacode in areacodes:
-		#Get the response from the API for the MSOA
-		data = get_data(areatype, areacode, metrics)
-		for index in range(len(data['body'])):
-			if not index == 0:
-				#Create a list formatted for influxDB import in Line protocol format
-				linedata = areatype + '-covid-data,location=' + data['body'][index]['areaName'].replace(' ', '') + ' '
-				i = 0
-				for metric in metrics:
-					i += 1
-					#If it's an age metric, add a label for the age category and then the metric
-					if 'Age' in metric and data['body'][index][metric] is not None:
-						for ageindex in range(len(data['body'][index][metric])):
-							lineagedata = areatype + '-covid-data,location=' + data['body'][index]['areaName'].replace(' ', '') + ','
-							lineagedata += 'age=' + data['body'][index][metric][ageindex]['age'] + ' '
-							if 'Deaths' in metric:
-								lineagedata += metric + '=' + str(data['body'][index][metric][ageindex]['deaths']) + ' '
-							elif 'Admissions' in metric:
-								lineagedata += metric + '=' + str(data['body'][index][metric][ageindex]['value']) + ' '
-							lineagedata += date_timestamp(data['body'][index]['date'])
-							linedatalist.append(lineagedata)
-					else:
-						linedata += metric + '=' + str(checkfornone(data['body'][index][metric]))
-						nonagemetric = True
-					if not i == len(metrics):
-						linedata += ','
-					else:
-						linedata += ' '
-				linedata += date_timestamp(data['body'][index]['date'])
-				if nonagemetric:
-					linedatalist.append(linedata)
-					nonagemetric = False
-				
-	#Write the data to InfluxDB
-	print(linedatalist)
 	#client.write_points(linedatalist, database='covid', time_precision='s', batch_size=10000, protocol='line')
 
-write_line_data(api_schemas)
-#write_line_data('msoa', msoa_areacodes, msoa_metrics, msoa_api_schema)
-#write_line_data('nation', nation_areacodes, nation_metrics, nation_api_schema)
+write_data(api_schemas)
+for line in linedatalist:
+	print(line)
