@@ -10,14 +10,6 @@ import json
 import sys
 from datetime import datetime
 
-msoa_areacodes = ['E02002332', 'E02002333', 'E02001098']
-msoa_metrics = ['newCasesBySpecimenDateRollingSum', 'newCasesBySpecimenDateRollingRate', 'newCasesBySpecimenDateChange', 'newCasesBySpecimenDateChangePercentage']
-msoa_api_schema = ['areaName']
-msoa_api_schema.extend(msoa_metrics)
-nation_areacodes = ['E92000001']
-nation_metrics = ['newDeaths28DaysByDeathDateAgeDemographics', 'cumAdmissionsByAge']
-nation_api_schema = ['areaName','date']
-nation_api_schema.extend(nation_metrics)
 timestamp_tag = 'date'
 
 api_schemas = {
@@ -25,7 +17,11 @@ api_schemas = {
 	'areacodes': ['E92000001'],
 	'l1tags': ['areaName'],
 	'l2tags': ['age'],
-	'l1metrics': ['newDeaths28DaysByDeathDateAgeDemographics', 'cumAdmissionsByAge'],
+	'l1metrics': ['newDeaths28DaysByDeathDateAgeDemographics', 'cumAdmissionsByAge', 
+		'weeklyPeopleVaccinatedFirstDoseByVaccinationDate', 'weeklyPeopleVaccinatedSecondDoseByVaccinationDate', 
+		'cumPeopleVaccinatedFirstDoseByPublishDate', 'cumPeopleVaccinatedFirstDoseByVaccinationDate', 
+		'cumPeopleVaccinatedSecondDoseByPublishDate', 'cumPeopleVaccinatedSecondDoseByVaccinationDate', 
+		'newPeopleVaccinatedFirstDoseByPublishDate', 'newPeopleVaccinatedSecondDoseByPublishDate'],
 	'l2metrics': ['rate', 'value', 'deaths', 'rollingRate', 'rollingSum']
 },{
 	'areatype': 'msoa',
@@ -49,7 +45,7 @@ def get_data(areatype, areacode, metrics):
 		endpoint += 'metric=' + metric + '&'
 	endpoint += 'format=json'
 	
-	print(endpoint)
+	print('Accessing Endpoint: ',endpoint)
 	
 	response = get(endpoint, timeout=10)
     
@@ -72,12 +68,16 @@ def date_timestamp(string):
 	return str(timestamp)
 	
 def checkfornone(value):
-#	print(value)
 	if value is None:
 		result = 0
 	else:
 		result = value
 	return str(result)
+	
+def chunks(lst, n):
+    #"""Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
 	
 def write_line_data(areatype, tags_values, metrics_values, date):
 	#Write metric name
@@ -110,26 +110,27 @@ def write_line_data(areatype, tags_values, metrics_values, date):
 		else:
 			linedata += ' '
 	#Write timestamp
-	linedata += 'timestamp=' + date_timestamp(date)		
+	linedata += date_timestamp(date)
 	linedatalist.append(linedata)
 	
 
-def write_data(api_schemas):
-	#Iterate through each schema type
-	for api_schema in api_schemas:
-		try:
-			for areacode in api_schema['areacodes']:
-				#Get the response from the API for the each areacode
-				data = get_data(api_schema['areatype'], areacode, api_schema['l1metrics'])
+#Iterate through each schema type
+print('Collecting data...')
+for api_schema in api_schemas:
+	try:
+		#Get the response from the API for the each areacode
+		for areacode in api_schema['areacodes']:
+			#Split the l1metrics into batches of 5 as this is the limit of the API
+			for l1metrics in chunks(api_schema['l1metrics'], 5):
+				data = get_data(api_schema['areatype'], areacode, l1metrics)
 				#print(data)
 				#Go through each instance in the data
 				for index in range(len(data['body'])):
 					l1metrics_values = []
 					l1tags_values = []
 					#Go through each L1 Metric and work out if it is a dictionary or not
-					for metric in api_schema['l1metrics']:
+					for metric in l1metrics:
 						metric_dataset = data['body'][index][metric]
-
 						#Check if the metric is a list, or a plain l1 metric
 						if isinstance(metric_dataset, list) and len(metric_dataset) > 0:
 							#Go through each metric list and pull out the data and tags
@@ -152,15 +153,12 @@ def write_data(api_schemas):
 							l1metrics_values.extend([{'name': metric, 'value': metric_dataset}])								
 					for tag in api_schema['l1tags']:
 						l1tags_values.extend([{'name': tag, 'value': data['body'][index][tag]}])							
-					write_line_data(api_schema['areatype'], l1tags_values, l1metrics_values, data['body'][index][timestamp_tag])		
-		except:
-			print('Error: ', sys.exc_info()[0], 'Schema: ', api_schema)
-			raise
+					if len(l1metrics_values) > 0:
+						write_line_data(api_schema['areatype'], l1tags_values, l1metrics_values, data['body'][index][timestamp_tag])		
+	except:
+		print('Error: ', sys.exc_info()[0], 'Schema: ', api_schema)
+		raise
 			
-	#client.write_points(linedatalist, database='covid', time_precision='s', batch_size=10000, protocol='line')
-
-	#client.write_points(linedatalist, database='covid', time_precision='s', batch_size=10000, protocol='line')
-
-write_data(api_schemas)
-for line in linedatalist:
-	print(line)
+#Write the data to InfluxDB
+print('writing the data to InfluxDB Database')
+client.write_points(linedatalist, database='covid', time_precision='s', batch_size=10000, protocol='line')
