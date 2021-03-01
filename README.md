@@ -30,8 +30,8 @@ l2metrics: These are level 2 metrics, which appear two levels underthe body in t
 
 Please ensure that the latest version of python3 is installed, and that the influxdb and request libraries are installed:
 
-'pip3 install requests
-pip3 install influxdb'
+`pip3 install requests
+pip3 install influxdb`
 
 ## Operation
 
@@ -41,7 +41,7 @@ Also, ensure that that influxdb and request libraries need to be installed using
 
 To run, the script can be run directly using:
 
-'python3 app.py'
+`python3 app.py`
 
 It is recommended however that the script is run in a Docker container. This can be done easily by using https://github.com/cstosgale/python-docker
 
