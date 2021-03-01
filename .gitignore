@@ -1,3 +1,4 @@
 BBEdit*.*
 *.pyc
 __pycache__
+*.json
