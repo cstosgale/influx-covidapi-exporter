@@ -20,7 +20,7 @@
 			"l2metrics": []
 		}],
 	"influxdb_settings": {
-		"host": "ENTERHOST",
+		"host": "influxdb",
 		"port": "8086"
 		}
 }
