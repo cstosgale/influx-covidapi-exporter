@@ -2,7 +2,6 @@
 
 from requests import get
 from influxdb import InfluxDBClient
-from jsonextract import json_extract
 import uuid
 import random
 import time
