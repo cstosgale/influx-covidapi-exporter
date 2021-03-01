@@ -1,5 +1,5 @@
 # influx-covidapi-exporter
-Python script to export data from data.coronavirus.gov.uk and import it into influxdb
+Python script to export data from https://data.coronavirus.gov.uk and import it into influxdb
 
 This script will connect to version 2 of the API, pull down the data you request, and import it into InfluxDB. The script is designed to run on a loop, so it can be run as a service, or in a container, and keep the data up to date.
 
