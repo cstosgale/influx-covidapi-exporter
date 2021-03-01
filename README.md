@@ -30,8 +30,8 @@ l2metrics: These are level 2 metrics, which appear two levels underthe body in t
 
 Please ensure that the latest version of python3 is installed, and that the influxdb and request libraries are installed:
 
-`pip3 install requests
-pip3 install influxdb`
+``pip3 install requests
+pip3 install influxdb``
 
 ## Operation
 
