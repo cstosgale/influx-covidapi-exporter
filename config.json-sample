@@ -13,7 +13,7 @@
 			"l2metrics": ["rate", "value", "deaths", "rollingRate", "rollingSum"]
 		},{
 			"areatype": "msoa",
-			"areacodes": ["E02002332", "E02002333", "E02001098"],
+			"areacodes": ["E0XXXXXXX", "E0XXXXXXX", "E0XXXXXXX"],
 			"l1tags": ["areaName"],
 			"l2tags": [],
 			"l1metrics": ["newCasesBySpecimenDateRollingSum", "newCasesBySpecimenDateRollingRate", "newCasesBySpecimenDateChange", "newCasesBySpecimenDateChangePercentage"],
