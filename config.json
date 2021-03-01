@@ -1,0 +1,29 @@
+{
+	"api_schemas": [
+		{
+			"areatype": "nation",
+			"areacodes": ["E92000001"],
+			"l1tags": ["areaName"],
+			"l2tags": ["age"],
+			"l1metrics": ["newDeaths28DaysByDeathDateAgeDemographics", "cumAdmissionsByAge", 
+				"weeklyPeopleVaccinatedFirstDoseByVaccinationDate", "weeklyPeopleVaccinatedSecondDoseByVaccinationDate", 
+				"cumPeopleVaccinatedFirstDoseByPublishDate", "cumPeopleVaccinatedFirstDoseByVaccinationDate", 
+				"cumPeopleVaccinatedSecondDoseByPublishDate", "cumPeopleVaccinatedSecondDoseByVaccinationDate", 
+				"newPeopleVaccinatedFirstDoseByPublishDate", "newPeopleVaccinatedSecondDoseByPublishDate"],
+			"l2metrics": ["rate", "value", "deaths", "rollingRate", "rollingSum"]
+		},{
+			"areatype": "msoa",
+			"areacodes": ["E02002332", "E02002333", "E02001098"],
+			"l1tags": ["areaName"],
+			"l2tags": [],
+			"l1metrics": ["newCasesBySpecimenDateRollingSum", "newCasesBySpecimenDateRollingRate", "newCasesBySpecimenDateChange", "newCasesBySpecimenDateChangePercentage"],
+			"l2metrics": []
+		}],
+	"influxdb_settings": {
+		"host": "influxdb",
+		"port": "8086"
+		},
+	"script_settings": {
+		"loopsecs": "10800"
+		}
+}
