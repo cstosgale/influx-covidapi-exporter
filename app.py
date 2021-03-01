@@ -14,8 +14,8 @@ from datetime import datetime
 with open('config.json') as config_file:
 	config_json = json.load(config_file)
 	api_schemas = config_json['api_schemas']
-	idb_host = config_son['influxdb_settings']['host']
-	idb_port = config_son['influxdb_settings']['port']
+	idb_host = config_json['influxdb_settings']['host']
+	idb_port = config_json['influxdb_settings']['port']
 
 timestamp_tag = 'date'
 alldata_dict = {}
