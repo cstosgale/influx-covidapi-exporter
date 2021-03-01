@@ -10,33 +10,17 @@ import json
 import sys
 from datetime import datetime
 
+#Open config file
+with open('config.json') as config_file:
+	config_json = json.load(config_file)
+	api_schemas = config_json['api_schemas']
+	idb_host = config_son['influxdb_settings']['host']
+	idb_port = config_son['influxdb_settings']['port']
+
 timestamp_tag = 'date'
-
-api_schemas = {
-	'areatype': 'nation',
-	'areacodes': ['E92000001'],
-	'l1tags': ['areaName'],
-	'l2tags': ['age'],
-	'l1metrics': ['newDeaths28DaysByDeathDateAgeDemographics', 'cumAdmissionsByAge', 
-		'weeklyPeopleVaccinatedFirstDoseByVaccinationDate', 'weeklyPeopleVaccinatedSecondDoseByVaccinationDate', 
-		'cumPeopleVaccinatedFirstDoseByPublishDate', 'cumPeopleVaccinatedFirstDoseByVaccinationDate', 
-		'cumPeopleVaccinatedSecondDoseByPublishDate', 'cumPeopleVaccinatedSecondDoseByVaccinationDate', 
-		'newPeopleVaccinatedFirstDoseByPublishDate', 'newPeopleVaccinatedSecondDoseByPublishDate'],
-	'l2metrics': ['rate', 'value', 'deaths', 'rollingRate', 'rollingSum']
-},{
-	'areatype': 'msoa',
-	'areacodes': ['E02002332', 'E02002333', 'E02001098'],
-	'l1tags': ['areaName'],
-	'l2tags': [],
-	'l1metrics': ['newCasesBySpecimenDateRollingSum', 'newCasesBySpecimenDateRollingRate', 'newCasesBySpecimenDateChange', 'newCasesBySpecimenDateChangePercentage'],
-	'l2metrics': []
-}
-
-
-
 alldata_dict = {}
 linedatalist = []
-client = InfluxDBClient(host='192.168.8.100', port=8086)
+client = InfluxDBClient(host=idb_host, port=idb_port)
 
 def get_data(areatype, areacode, metrics):
 	#Gets COVID data for a specific area code for a specific metric	
