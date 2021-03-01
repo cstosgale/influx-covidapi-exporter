@@ -7,6 +7,8 @@ The script will also pull in any historic data available, as the API provides at
 
 # Configuration
 
+N.B. A Sample config file is provided, please rename this to config.json for the script to work correctly
+
 The operation of the script is configured by the data in config.json. This defines:
 
 api_schemas: the schema of the metrics you wish to download
@@ -14,4 +16,5 @@ influxdb_settings: the details to connect to influxdb
 script_settings: Global settings such as the loop time (how long the script waits between runs
 
 # API Schema
+
 
