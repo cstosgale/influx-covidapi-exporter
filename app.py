@@ -7,10 +7,12 @@ import random
 import time
 import json
 import sys
+import os
 from datetime import datetime
 
 #Open config file
-with open('config.json') as config_file:
+filepath = os.path.dirname(__file__) + '/config.json'
+with open(filepath) as config_file:
 	config_json = json.load(config_file)
 	api_schemas = config_json['api_schemas']
 	idb_host = config_json['influxdb_settings']['host']
