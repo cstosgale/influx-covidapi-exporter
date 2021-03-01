@@ -5,7 +5,7 @@ This script will connect to version 2 of the API, pull down the data you request
 
 The script will also pull in any historic data available, as the API provides at least 6 months or so of back data. Each time it runs it will import all the data available (although influxDB will not duplicate existing data)
 
-# Configuration
+## Configuration
 
 N.B. A Sample config file is provided, please rename this to config.json for the script to work correctly
 
@@ -15,7 +15,7 @@ api_schemas: the schema of the metrics you wish to download
 influxdb_settings: the details to connect to influxdb
 script_settings: Global settings such as the loop time (how long the script waits between runs
 
-# API Schema
+## API Schema
 
 This defines what data to pull from the API. As version 2 of the API is not currently documented, you can largely work out what settings to use for new metrics by examining the URL and JSON output from https://coronavirus.data.gov.uk/details/download
 
@@ -26,14 +26,14 @@ l1metrics: These are level 1 metrics, so ones that appear one level under the bo
 l2tags: These are level 2 tags, which appear two levels underthe body in the JSON response. In my example I have used age which is used by some of the metrics
 l2metrics: These are level 2 metrics, which appear two levels underthe body in the JSON response.
 
-# Requirements
+## Requirements
 
 Please ensure that the latest version of python3 is installed, and that the influxdb and request libraries are installed:
 
-pip3 install requests
-pip3 install influxdb
+'pip3 install requests
+pip3 install influxdb'
 
-# Operation
+## Operation
 
 Before use, setup your config.json file, ensuring it is in the same directory as the app.py script.
 
@@ -41,7 +41,7 @@ Also, ensure that that influxdb and request libraries need to be installed using
 
 To run, the script can be run directly using:
 
-python3 app.py
+'python3 app.py'
 
 It is recommended however that the script is run in a Docker container. This can be done easily by using https://github.com/cstosgale/python-docker
 
