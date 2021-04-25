@@ -36,8 +36,7 @@ def get_data(areatype, areacode, metrics):
 	response = get(endpoint, timeout=10)
     
 	if response.status_code >= 400:
-		raise RuntimeError('Request failed: { response.text }' + 'URL: ' + endpoint)
-
+		print('Request Failed. Response code: ', response.status_code)
 	return response.json()
 	
 def date_timestamp(string):
@@ -109,40 +108,44 @@ while True:
 			#Get the response from the API for the each areacode
 			for areacode in api_schema['areacodes']:
 				#Split the l1metrics into batches of 5 as this is the limit of the API
-				for l1metrics in chunks(api_schema['l1metrics'], 5):
-					data = get_data(api_schema['areatype'], areacode, l1metrics)
+				for l1metrics in chunks(api_schema['l1metrics'], 1):
+					try:
+						data = get_data(api_schema['areatype'], areacode, l1metrics)
+						for index in range(len(data['body'])):
+							l1metrics_values = []
+							l1tags_values = []
+							#Go through each L1 Metric and work out if it is a dictionary or not
+							for metric in l1metrics:
+								metric_dataset = data['body'][index][metric]
+								#Check if the metric is a list, or a plain l1 metric
+								if isinstance(metric_dataset, list) and len(metric_dataset) > 0:
+									#Go through each metric list and pull out the data and tags
+									for metric_data in metric_dataset:
+										l2tags_values = []
+										l2metrics_values = []
+										l2tags_values.extend([{'name': 'parentmetric', 'value': metric}])
+										for tag in api_schema['l1tags']:
+											l2tags_values.extend([{'name': tag, 'value': data['body'][index][tag]}])
+										for tag in api_schema['l2tags']:
+											#Check the tag exists in the data
+											if tag in metric_data:
+												l2tags_values.extend([{'name': tag, 'value': metric_data[tag]}])
+										for l2metric in api_schema['l2metrics']:
+											#Check if the metric exists in the data
+											if l2metric in metric_data:
+												l2metrics_values.extend([{'name': l2metric, 'value': metric_data[l2metric]}])
+										write_line_data(api_schema['areatype'], l2tags_values, l2metrics_values, data['body'][index][timestamp_tag])
+								elif not isinstance(metric_dataset, list) and metric_dataset is not None:
+									l1metrics_values.extend([{'name': metric, 'value': metric_dataset}])								
+							for tag in api_schema['l1tags']:
+								l1tags_values.extend([{'name': tag, 'value': data['body'][index][tag]}])							
+							if len(l1metrics_values) > 0:
+								write_line_data(api_schema['areatype'], l1tags_values, l1metrics_values, data['body'][index][timestamp_tag])	
+					except ValueError:
+						print('Error with JSON response from API')
 					#print(data)
 					#Go through each instance in the data
-					for index in range(len(data['body'])):
-						l1metrics_values = []
-						l1tags_values = []
-						#Go through each L1 Metric and work out if it is a dictionary or not
-						for metric in l1metrics:
-							metric_dataset = data['body'][index][metric]
-							#Check if the metric is a list, or a plain l1 metric
-							if isinstance(metric_dataset, list) and len(metric_dataset) > 0:
-								#Go through each metric list and pull out the data and tags
-								for metric_data in metric_dataset:
-									l2tags_values = []
-									l2metrics_values = []
-									l2tags_values.extend([{'name': 'parentmetric', 'value': metric}])
-									for tag in api_schema['l1tags']:
-										l2tags_values.extend([{'name': tag, 'value': data['body'][index][tag]}])
-									for tag in api_schema['l2tags']:
-										#Check the tag exists in the data
-										if tag in metric_data:
-											l2tags_values.extend([{'name': tag, 'value': metric_data[tag]}])
-									for l2metric in api_schema['l2metrics']:
-										#Check if the metric exists in the data
-										if l2metric in metric_data:
-											l2metrics_values.extend([{'name': l2metric, 'value': metric_data[l2metric]}])
-									write_line_data(api_schema['areatype'], l2tags_values, l2metrics_values, data['body'][index][timestamp_tag])
-							elif not isinstance(metric_dataset, list) and metric_dataset is not None:
-								l1metrics_values.extend([{'name': metric, 'value': metric_dataset}])								
-						for tag in api_schema['l1tags']:
-							l1tags_values.extend([{'name': tag, 'value': data['body'][index][tag]}])							
-						if len(l1metrics_values) > 0:
-							write_line_data(api_schema['areatype'], l1tags_values, l1metrics_values, data['body'][index][timestamp_tag])		
+	
 		except:
 			print('Error: ', sys.exc_info()[0], 'Schema: ', api_schema)
 			raise
