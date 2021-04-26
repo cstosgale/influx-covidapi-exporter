@@ -30,13 +30,15 @@ def get_data(areatype, areacode, metrics):
 	for metric in metrics:
 		endpoint += 'metric=' + metric + '&'
 	endpoint += 'format=json'
-	
-	print('Accessing Endpoint: ',endpoint)
-	
-	response = get(endpoint, timeout=10)
-    
-	if response.status_code >= 400:
-		print('Request Failed. Response code: ', response.status_code)
+	sleep = 0
+	responsecode = 429
+	while responsecode == 429:	
+		print('Accessing Endpoint: ',endpoint)	
+		response = get(endpoint, timeout=10)
+		time.sleep(sleep)
+		responsecode = response.status_code
+		print('Response Code: ', responsecode)
+		sleep += 1
 	return response.json()
 	
 def date_timestamp(string):
@@ -143,6 +145,9 @@ while True:
 								write_line_data(api_schema['areatype'], l1tags_values, l1metrics_values, data['body'][index][timestamp_tag])	
 					except ValueError:
 						print('Error with JSON response from API')
+					except:
+						print('Request Failed. Response code: ', responsecode)
+					
 					#print(data)
 					#Go through each instance in the data
 	
